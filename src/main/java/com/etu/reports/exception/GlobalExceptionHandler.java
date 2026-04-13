@@ -5,9 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import com.etu.reports.exception.ReportNotFoundException;
+import com.etu.reports.exception.TemplateNotFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -24,6 +29,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of(
                 "error", "Bad Request",
                 "message", e.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingParam(MissingServletRequestParameterException e) {
+        log.warn("Missing request parameter: {}", e.getMessage());
+        return ResponseEntity.badRequest().body(Map.of(
+                "error", "Bad Request",
+                "message", "Отсутствует обязательный параметр: " + e.getParameterName()
         ));
     }
 
@@ -48,11 +62,19 @@ public class GlobalExceptionHandler {
         ));
     }
 
-    @ExceptionHandler(ReportNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handleNotFound(ReportNotFoundException e) {
+    @ExceptionHandler({ReportNotFoundException.class, TemplateNotFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleNotFound(RuntimeException e) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "error", "Not Found",
                 "message", e.getMessage()
+        ));
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                "error", "Not Found",
+                "message", e.getResourcePath()
         ));
     }
 

@@ -16,6 +16,11 @@ public class DisciplineCard {
     private boolean hasPass;
     private boolean hasPassMark;
 
+    /** Форма обучения (например, "Очная", "Заочная") */
+    private String educationForm;
+    /** Уровень образования (например, "Бакалавриат", "Магистратура") */
+    private String educationLevel;
+
     // getters/setters
     public Integer getPlanRowId() { return planRowId; }
     public void setPlanRowId(Integer planRowId) { this.planRowId = planRowId; }
@@ -46,4 +51,10 @@ public class DisciplineCard {
 
     public boolean isHasPassMark() { return hasPassMark; }
     public void setHasPassMark(boolean hasPassMark) { this.hasPassMark = hasPassMark; }
+
+    public String getEducationForm() { return educationForm; }
+    public void setEducationForm(String educationForm) { this.educationForm = educationForm; }
+
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
 }

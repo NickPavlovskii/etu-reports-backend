@@ -2,6 +2,7 @@ package com.etu.reports.api;
 
 import com.etu.reports.domain.DisciplineCard;
 import com.etu.reports.repository.TeachingCardRepository;
+import com.etu.reports.util.AcademicYearValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,9 +29,10 @@ public class TeacherCardController {
     )
     @GetMapping("/teachers/{lastName}/disciplines/cards")
     public List<DisciplineCard> disciplineCards(
-            @Parameter(example = "Иванов") @PathVariable String lastName
+            @Parameter(example = "Иванов") @PathVariable String lastName,
+            @Parameter(required = true, example = "2024-2025", description = "Учебный год (формат YYYY-YYYY)") @RequestParam("academicYear") String academicYear
     ) {
-        return repo.findDisciplineCardsByLastName(lastName);
+        return repo.findDisciplineCardsByLastName(lastName, AcademicYearValidator.requireValid(academicYear));
     }
 
     @Operation(

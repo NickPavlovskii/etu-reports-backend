@@ -1,7 +1,7 @@
 package com.etu.reports.api;
 
-import com.etu.reports.dto.ArchiveReportDto;
-import com.etu.reports.repository.StudentReportRepository;
+import com.etu.reports.dto.report.ArchiveReportDto;
+import com.etu.reports.service.ArchiveService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,31 +12,29 @@ import java.util.List;
 @Tag(name = "Archive", description = "Архив учебных работ")
 public class ArchiveController {
 
-    private final StudentReportRepository reportsRepo;
+    private final ArchiveService archiveService;
 
-    public ArchiveController(StudentReportRepository reportsRepo) {
-        this.reportsRepo = reportsRepo;
+    public ArchiveController(ArchiveService archiveService) {
+        this.archiveService = archiveService;
     }
 
     /**
-     * Преподаватель (position = null/преподаватель): только свои отчёты
-     * Возвращаем ТОЛЬКО ПОСЛЕДНИЕ ВЕРСИИ.
+     * Преподаватель: только свои отчёты, только последние версии.
      */
     @GetMapping("/teachers/{lastName}/archive/reports")
     public List<ArchiveReportDto> teacherArchive(@PathVariable String lastName) {
-        return reportsRepo.findArchiveLatestByTeacher(lastName);
+        return archiveService.findArchiveByTeacher(lastName);
     }
 
     /**
-     * Админ/завед/зам: все отчёты кафедры (и можно фильтровать по преподавателю на бэке).
-     * Возвращаем ТОЛЬКО ПОСЛЕДНИЕ ВЕРСИИ.
+     * Админ/завед/зам: все отчёты кафедры, только последние версии.
      *
-     * teacherLastName — необязательный фильтр.
+     * @param teacherLastName необязательный фильтр по фамилии преподавателя
      */
     @GetMapping("/archive/reports")
     public List<ArchiveReportDto> archiveAll(
             @RequestParam(value = "teacherLastName", required = false) String teacherLastName
     ) {
-        return reportsRepo.findArchiveLatestAll(teacherLastName);
+        return archiveService.findArchiveAll(teacherLastName);
     }
 }

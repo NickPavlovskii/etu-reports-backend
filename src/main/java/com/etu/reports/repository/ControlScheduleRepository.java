@@ -24,13 +24,13 @@ public class ControlScheduleRepository {
         String sql = "WITH groups AS (" +
                 "  SELECT DISTINCT trim(t.group_name) AS group_name " +
                 "  FROM public.teaching_load_csv t " +
-                "  WHERE t.plan_row_id = ? AND t.last_name ILIKE ? AND trim(t.group_name) <> ''" +
+                "  WHERE t.plan_row_id = ? AND LOWER(TRIM(t.last_name)) = LOWER(TRIM(?)) AND trim(t.group_name) <> ''" +
                 ") " +
                 "SELECT g.group_name, cs.week_start, cs.week_end, cs.control_text, cs.topics " +
                 "FROM groups g JOIN public.control_schedule cs ON cs.plan_row_id = ? " +
                 "ORDER BY g.group_name, cs.week_start, cs.week_end, cs.control_text";
 
-        String pattern = "%" + (lastName == null ? "" : lastName.trim()) + "%";
+        String ln = (lastName == null ? "" : lastName.trim());
         return jdbc.query(sql, (rs, rowNum) -> {
             String groupName = rs.getString("group_name");
             int weekStart = rs.getInt("week_start");
@@ -39,7 +39,7 @@ public class ControlScheduleRepository {
             String topicsText = rs.getString("topics");
             List<String> topics = parseTopicsJson(topicsText);
             return new ControlScheduleDto(groupName, weekStart, weekEnd, controlText, topics);
-        }, planRowId, pattern, planRowId);
+        }, planRowId, ln, planRowId);
     }
 
     private static List<String> parseTopicsJson(String s) {
