@@ -16,9 +16,6 @@ public class AppProperties {
     /** Директория хранения файлов отчётов. */
     private String reportsStorageDir = "reports_storage";
 
-    /** Разрешённые CORS origins (через запятую). */
-    private String corsAllowedOrigins = "http://localhost:5173";
-
     public String getDepartmentFilter() {
         return departmentFilter;
     }
@@ -33,13 +30,5 @@ public class AppProperties {
 
     public void setReportsStorageDir(String reportsStorageDir) {
         this.reportsStorageDir = reportsStorageDir;
-    }
-
-    public String getCorsAllowedOrigins() {
-        return corsAllowedOrigins;
-    }
-
-    public void setCorsAllowedOrigins(String corsAllowedOrigins) {
-        this.corsAllowedOrigins = corsAllowedOrigins;
     }
 }

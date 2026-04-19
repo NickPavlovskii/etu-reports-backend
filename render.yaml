@@ -1,0 +1,33 @@
+# Render Blueprint: https://docs.render.com/docs/infrastructure-as-code
+# В дашборде Render поле "Blueprint Path" оставьте пустым или укажите: render.yaml
+# (не "etuyaml" — это должно быть имя файла .yaml относительно корня репозитория)
+
+databases:
+  - name: etu-reports-db
+    databaseName: reports_db
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: etu-reports-backend
+    runtime: docker
+    plan: starter
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod,render
+      - key: DATABASE_URL
+        fromDatabase:
+          name: etu-reports-db
+          property: connectionString
+      - key: DATABASE_USERNAME
+        fromDatabase:
+          name: etu-reports-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: etu-reports-db
+          property: password
+      # Фронт (через запятую) или временно "*"
+      - key: FRONTEND_URL
+        sync: false
