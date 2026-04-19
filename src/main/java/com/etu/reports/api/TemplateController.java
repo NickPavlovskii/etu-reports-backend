@@ -12,9 +12,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.List;
+import java.util.Objects;
 
 /**
  * API шаблонов проверки (verification_templates).
@@ -52,9 +53,15 @@ public class TemplateController {
     @Operation(summary = "Создать шаблон")
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public VerificationTemplateDto create(@Valid @RequestBody CreateTemplateRequest request) {
+    public VerificationTemplateDto create(@RequestBody CreateTemplateRequest request) {
+        String name = request.getName();
+        if (name == null || name.isBlank()) {
+            name = "Новый шаблон";
+        } else {
+            name = name.trim();
+        }
         VerificationTemplateDto created = templateRepo.create(
-                request.getName(),
+                name,
                 request.getDescription(),
                 request.getCriteria()
         );
@@ -65,7 +72,22 @@ public class TemplateController {
     @Operation(summary = "Обновить шаблон")
     @PutMapping("/{id}")
     public VerificationTemplateDto update(@PathVariable int id, @RequestBody CreateTemplateRequest request) {
-        VerificationTemplateDto updated = templateRepo.update(id, request.getName(), request.getDescription(), request.getCriteria())
+        VerificationTemplateDto existing = templateRepo.findById(id)
+                .orElseThrow(() -> new TemplateNotFoundException(id));
+        String name = request.getName();
+        if (name == null || name.isBlank()) {
+            name = existing.getName();
+        } else {
+            name = name.trim();
+        }
+        String description = request.getDescription() != null ? request.getDescription() : existing.getDescription();
+        TemplateCriteriaDto criteria = request.getCriteria();
+        if (criteria == null) {
+            criteria = existing.getCriteria();
+        } else {
+            criteria = mergeTemplateCriteria(existing.getCriteria(), criteria);
+        }
+        VerificationTemplateDto updated = templateRepo.update(id, name, description, criteria)
                 .orElseThrow(() -> new TemplateNotFoundException(id));
         auditLogRepo.log("TEMPLATE_UPDATED", "template", String.valueOf(id), null, updated.getName());
         return updated;
@@ -113,8 +135,8 @@ public class TemplateController {
         return updated;
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CreateTemplateRequest {
-        @NotBlank(message = "Название обязательно")
         private String name;
         private String description;
         private TemplateCriteriaDto criteria;
@@ -125,6 +147,55 @@ public class TemplateController {
         public void setDescription(String description) { this.description = description; }
         public TemplateCriteriaDto getCriteria() { return criteria; }
         public void setCriteria(TemplateCriteriaDto criteria) { this.criteria = criteria; }
+    }
+
+    /**
+     * Частичный JSON criteria с фронта даёт null в непереданных полях — без слияния в БД затираются старые значения.
+     */
+    private static TemplateCriteriaDto mergeTemplateCriteria(TemplateCriteriaDto base, TemplateCriteriaDto patch) {
+        if (base == null) {
+            return Objects.requireNonNullElseGet(patch, () -> TemplateCriteriaDto.builder().build());
+        }
+        if (patch == null) {
+            return base;
+        }
+        return base.toBuilder()
+                .name(pick(patch.getName(), base.getName()))
+                .description(pick(patch.getDescription(), base.getDescription()))
+                .fileFormat(pick(patch.getFileFormat(), base.getFileFormat()))
+                .font(pick(patch.getFont(), base.getFont()))
+                .fontSize(pick(patch.getFontSize(), base.getFontSize()))
+                .lineSpacing(pick(patch.getLineSpacing(), base.getLineSpacing()))
+                .minPages(pick(patch.getMinPages(), base.getMinPages()))
+                .minSources(pick(patch.getMinSources(), base.getMinSources()))
+                .illNumbering(pick(patch.getIllNumbering(), base.getIllNumbering()))
+                .figurePosition(pick(patch.getFigurePosition(), base.getFigurePosition()))
+                .figureCaption(pick(patch.getFigureCaption(), base.getFigureCaption()))
+                .tableTitle(pick(patch.getTableTitle(), base.getTableTitle()))
+                .tablePosition(pick(patch.getTablePosition(), base.getTablePosition()))
+                .tableTitlePlacement(pick(patch.getTableTitlePlacement(), base.getTableTitlePlacement()))
+                .submissionFormat(pick(patch.getSubmissionFormat(), base.getSubmissionFormat()))
+                .hasTitlePage(pickBool(patch.getHasTitlePage(), base.getHasTitlePage()))
+                .hasToc(pickBool(patch.getHasToc(), base.getHasToc()))
+                .hasIntroduction(pickBool(patch.getHasIntroduction(), base.getHasIntroduction()))
+                .hasMainPart(pickBool(patch.getHasMainPart(), base.getHasMainPart()))
+                .hasConclusion(pickBool(patch.getHasConclusion(), base.getHasConclusion()))
+                .hasBibliography(pickBool(patch.getHasBibliography(), base.getHasBibliography()))
+                .hasAppendices(pickBool(patch.getHasAppendices(), base.getHasAppendices()))
+                .titlePageRequiredStrings(pickList(patch.getTitlePageRequiredStrings(), base.getTitlePageRequiredStrings()))
+                .build();
+    }
+
+    private static String pick(String patch, String base) {
+        return patch != null ? patch : base;
+    }
+
+    private static Boolean pickBool(Boolean patch, Boolean base) {
+        return patch != null ? patch : base;
+    }
+
+    private static List<String> pickList(List<String> patch, List<String> base) {
+        return patch != null ? patch : base;
     }
 
 }

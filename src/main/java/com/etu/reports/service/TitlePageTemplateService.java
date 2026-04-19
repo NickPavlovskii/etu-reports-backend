@@ -188,6 +188,8 @@ public class TitlePageTemplateService {
                 .figurePosition(current.getFigurePosition())
                 .figureCaption(current.getFigureCaption())
                 .tableTitle(current.getTableTitle())
+                .tablePosition(current.getTablePosition())
+                .tableTitlePlacement(current.getTableTitlePlacement())
                 .submissionFormat(current.getSubmissionFormat())
                 .hasTitlePage(true)
                 .titlePageRequiredStrings(extracted)

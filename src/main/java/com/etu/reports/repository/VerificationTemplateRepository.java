@@ -3,6 +3,8 @@ package com.etu.reports.repository;
 import com.etu.reports.dto.template.TemplateCriteriaDto;
 import com.etu.reports.dto.template.VerificationTemplateDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -14,6 +16,8 @@ import java.util.Optional;
 
 @Repository
 public class VerificationTemplateRepository {
+
+    private static final Logger log = LoggerFactory.getLogger(VerificationTemplateRepository.class);
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -70,19 +74,25 @@ public class VerificationTemplateRepository {
     }
 
     private String toJson(TemplateCriteriaDto dto) {
-        if (dto == null) return "{}";
+        if (dto == null) {
+            return "{}";
+        }
         try {
             return objectMapper.writeValueAsString(dto);
         } catch (Exception e) {
-            return "{}";
+            log.error("Не удалось сериализовать criteria в JSON: {}", e.getMessage());
+            throw new IllegalStateException("Ошибка сохранения критериев шаблона", e);
         }
     }
 
     private TemplateCriteriaDto fromJson(String json) {
-        if (json == null || json.isBlank()) return TemplateCriteriaDto.builder().build();
+        if (json == null || json.isBlank()) {
+            return TemplateCriteriaDto.builder().build();
+        }
         try {
             return objectMapper.readValue(json, TemplateCriteriaDto.class);
         } catch (Exception e) {
+            log.warn("Не удалось разобрать criteria из БД, подставлен пустой объект: {}", e.getMessage());
             return TemplateCriteriaDto.builder().build();
         }
     }
