@@ -19,8 +19,6 @@
 
     <properties>
         <java.version>25</java.version>
-        <!-- JDK 25: Lombok ниже 1.18.40 не обрабатывает аннотации в javac (Docker/Render) -->
-        <lombok.version>1.18.44</lombok.version>
     </properties>
 
     <dependencies>
@@ -60,14 +58,6 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Lombok (версия явно: совместимость с JDK 25 + тот же артефакт в annotationProcessorPaths) -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Document processing: Word (DOCX) -->
         <dependency>
             <groupId>org.apache.poi</groupId>
@@ -102,28 +92,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <release>${java.version}</release>
-                    <annotationProcessorPaths>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>${lombok.version}</version>
-                        </path>
-                    </annotationProcessorPaths>
-                </configuration>
             </plugin>
         </plugins>
     </build>
