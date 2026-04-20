@@ -1,0 +1,7 @@
+target
+.git
+.idea
+*.iml
+reports_storage
+**/terminals
+**/.cursor
