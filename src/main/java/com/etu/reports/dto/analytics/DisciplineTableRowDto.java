@@ -9,6 +9,8 @@ public class DisciplineTableRowDto {
     private int studentsCount;
     private long expectedCount;
     private long uploadedCount;
+    /** Сколько Moodle-ссылок назначено для дисциплины (group+control+topic+academicYear). */
+    private long moodleLinksCount;
 
     @JsonProperty("disciplineName")
     public String getDisciplineName() { return disciplineName; }
@@ -29,4 +31,8 @@ public class DisciplineTableRowDto {
     @JsonProperty("uploadedCount")
     public long getUploadedCount() { return uploadedCount; }
     public void setUploadedCount(long uploadedCount) { this.uploadedCount = uploadedCount; }
+
+    @JsonProperty("moodleLinksCount")
+    public long getMoodleLinksCount() { return moodleLinksCount; }
+    public void setMoodleLinksCount(long moodleLinksCount) { this.moodleLinksCount = moodleLinksCount; }
 }

@@ -120,6 +120,21 @@ public class DisciplineTeacherOverrideRepository {
         return n != null && n > 0;
     }
 
+    public boolean teacherAssignedToPlanRow(String lastName, int planRowId) {
+        String ln = lastName == null ? "" : lastName.trim();
+        Integer n = jdbc.queryForObject(
+                """
+                SELECT COUNT(*)::int
+                FROM public.teaching_load_csv t
+                WHERE t.plan_row_id = ?
+                  AND LOWER(TRIM(t.last_name)) = LOWER(TRIM(?))
+                  AND t.department_name ILIKE ?
+                """,
+                Integer.class,
+                planRowId, ln, dept());
+        return n != null && n > 0;
+    }
+
     public void upsert(int planRowId, String actualLastName, String actualFirstName, String actualPatronymic, String updatedBy) {
         jdbc.update(
                 """

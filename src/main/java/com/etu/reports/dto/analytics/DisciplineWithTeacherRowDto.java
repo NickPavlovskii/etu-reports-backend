@@ -28,6 +28,8 @@ public class DisciplineWithTeacherRowDto {
     private int studentsCount;
     private long expectedCount;
     private long uploadedCount;
+    /** Сколько Moodle-ссылок назначено для данного planRowId. */
+    private long moodleLinksCount;
 
     @JsonProperty("planRowId")
     public Integer getPlanRowId() { return planRowId; }
@@ -100,4 +102,8 @@ public class DisciplineWithTeacherRowDto {
     @JsonProperty("uploadedCount")
     public long getUploadedCount() { return uploadedCount; }
     public void setUploadedCount(long uploadedCount) { this.uploadedCount = uploadedCount; }
+
+    @JsonProperty("moodleLinksCount")
+    public long getMoodleLinksCount() { return moodleLinksCount; }
+    public void setMoodleLinksCount(long moodleLinksCount) { this.moodleLinksCount = moodleLinksCount; }
 }

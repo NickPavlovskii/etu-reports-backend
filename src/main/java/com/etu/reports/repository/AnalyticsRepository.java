@@ -12,7 +12,9 @@ import org.springframework.stereotype.Repository;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public class AnalyticsRepository {
@@ -70,7 +72,9 @@ public class AnalyticsRepository {
             return jdbc.queryForObject(sql, (rs, i) -> {
                 TeacherStatsDto dto = new TeacherStatsDto();
                 dto.setExpectedCount(rs.getLong("expected_cnt"));
-                dto.setTotalWorks(rs.getLong("total_works"));
+                long uploadedFiles = rs.getLong("total_works");
+                long uploadedViaMoodle = fetchMoodleUploadedTotal(academicYear, ln);
+                dto.setTotalWorks(uploadedFiles + uploadedViaMoodle);
                 return dto;
             }, ln, dept(), ln, academicYear);
         } catch (Exception e) {
@@ -175,7 +179,9 @@ public class AnalyticsRepository {
                 DepartmentAnalyticsDto dto = new DepartmentAnalyticsDto();
                 dto.setTotalTeachers(rs.getInt("total_teachers"));
                 dto.setExpectedCount(rs.getLong("expected_cnt"));
-                dto.setTotalWorks(rs.getLong("total_works"));
+                long uploadedFiles = rs.getLong("total_works");
+                long uploadedViaMoodle = fetchMoodleUploadedTotal(academicYear, null);
+                dto.setTotalWorks(uploadedFiles + uploadedViaMoodle);
                 return dto;
             }, dept(), dept(), academicYear);
         } catch (Exception e) {
@@ -245,7 +251,7 @@ public class AnalyticsRepository {
             ORDER BY ts.last_name
             """;
         try {
-            return jdbc.query(sql, (rs, i) -> {
+            List<TeacherSummaryRowDto> rows = jdbc.query(sql, (rs, i) -> {
                 TeacherSummaryRowDto dto = new TeacherSummaryRowDto();
                 dto.setTeacherFio(rs.getString("teacher_fio"));
                 dto.setTeacherLastName(rs.getString("teacher_last_name"));
@@ -254,6 +260,12 @@ public class AnalyticsRepository {
                 dto.setUploadedCount(rs.getLong("uploaded_cnt"));
                 return dto;
             }, dept(), dept(), dept(), academicYear);
+            Map<String, Long> moodleByTeacher = fetchMoodleUploadedByTeacher(academicYear);
+            for (TeacherSummaryRowDto dto : rows) {
+                String ln = dto.getTeacherLastName() == null ? "" : dto.getTeacherLastName().trim().toLowerCase();
+                dto.setUploadedCount(dto.getUploadedCount() + moodleByTeacher.getOrDefault(ln, 0L));
+            }
+            return rows;
         } catch (Exception e) {
             return List.of();
         }
@@ -343,7 +355,7 @@ public class AnalyticsRepository {
             ORDER BY bg.discipline_name
             """;
         try {
-            return jdbc.query(sql, (rs, i) -> {
+            List<DisciplineTableRowDto> rows = jdbc.query(sql, (rs, i) -> {
                 DisciplineTableRowDto dto = new DisciplineTableRowDto();
                 dto.setDisciplineName(rs.getString("discipline_name"));
                 dto.setGroupsCount(rs.getInt("groups_cnt"));
@@ -352,6 +364,15 @@ public class AnalyticsRepository {
                 dto.setExpectedCount(rs.getLong("expected"));
                 return dto;
             }, dept(), academicYear, dept());
+            Map<String, long[]> moodleByDiscipline = fetchMoodleByDiscipline(academicYear, null);
+            for (DisciplineTableRowDto dto : rows) {
+                long[] mm = moodleByDiscipline.get(dto.getDisciplineName());
+                if (mm != null) {
+                    dto.setMoodleLinksCount(mm[0]);
+                    dto.setUploadedCount(dto.getUploadedCount() + mm[0]);
+                }
+            }
+            return rows;
         } catch (Exception e) {
             return List.of();
         }
@@ -567,7 +588,7 @@ public class AnalyticsRepository {
             ORDER BY bg.discipline_name, bg.teacher_fio, bg.course, bg.semester
             """;
         try {
-            return jdbc.query(sql, (rs, i) -> {
+            List<DisciplineWithTeacherRowDto> rows = jdbc.query(sql, (rs, i) -> {
                 DisciplineWithTeacherRowDto dto = new DisciplineWithTeacherRowDto();
                 dto.setPlanRowId((Integer) rs.getObject("plan_row_id"));
                 dto.setDisciplineName(rs.getString("discipline_name"));
@@ -590,8 +611,77 @@ public class AnalyticsRepository {
                 dto.setExpectedCount(rs.getLong("expected"));
                 return dto;
             }, dept(), dept(), academicYear, dept());
+            Map<Integer, long[]> moodleByPlanRow = fetchMoodleByPlanRow(academicYear);
+            for (DisciplineWithTeacherRowDto dto : rows) {
+                Integer planRowId = dto.getPlanRowId();
+                if (planRowId == null) continue;
+                long[] mm = moodleByPlanRow.get(planRowId);
+                if (mm != null) {
+                    dto.setMoodleLinksCount(mm[0]);
+                    dto.setUploadedCount(dto.getUploadedCount() + mm[0]);
+                }
+            }
+            return rows;
         } catch (Exception e) {
             return List.of();
+        }
+    }
+
+    /**
+     * Доп.метрика для аналитики: сколько Moodle-ссылок назначено по дисциплине.
+     * Если таблицы moodle_links нет (миграция V6 не выполнена), возвращаем пустую карту.
+     */
+    private Map<String, Long> fetchMoodleLinksByDiscipline() {
+        String sql = """
+                WITH tl AS (
+                  SELECT DISTINCT t.plan_row_id, t.discipline_name
+                  FROM public.teaching_load_csv t
+                  WHERE t.department_name ILIKE ?
+                    AND t.discipline_name IS NOT NULL AND BTRIM(t.discipline_name) <> ''
+                )
+                SELECT tl.discipline_name, COUNT(ml.*)::bigint AS moodle_links_cnt
+                FROM tl
+                JOIN public.moodle_links ml ON ml.plan_row_id = tl.plan_row_id
+                GROUP BY tl.discipline_name
+                """;
+        try {
+            return jdbc.query(sql, rs -> {
+                Map<String, Long> out = new HashMap<>();
+                while (rs.next()) {
+                    out.put(rs.getString("discipline_name"), rs.getLong("moodle_links_cnt"));
+                }
+                return out;
+            }, dept());
+        } catch (Exception ignored) {
+            return Map.of();
+        }
+    }
+
+    /**
+     * Доп.метрика для подробной таблицы: сколько Moodle-ссылок назначено по plan_row_id.
+     */
+    private Map<Integer, Long> fetchMoodleLinksByPlanRow() {
+        String sql = """
+                WITH tl AS (
+                  SELECT DISTINCT t.plan_row_id
+                  FROM public.teaching_load_csv t
+                  WHERE t.department_name ILIKE ?
+                )
+                SELECT ml.plan_row_id, COUNT(ml.*)::bigint AS moodle_links_cnt
+                FROM public.moodle_links ml
+                JOIN tl ON tl.plan_row_id = ml.plan_row_id
+                GROUP BY ml.plan_row_id
+                """;
+        try {
+            return jdbc.query(sql, rs -> {
+                Map<Integer, Long> out = new HashMap<>();
+                while (rs.next()) {
+                    out.put(rs.getInt("plan_row_id"), rs.getLong("moodle_links_cnt"));
+                }
+                return out;
+            }, dept());
+        } catch (Exception ignored) {
+            return Map.of();
         }
     }
   
@@ -1039,7 +1129,7 @@ public class AnalyticsRepository {
             ORDER BY bg.discipline_name
             """;
         try {
-            return jdbc.query(sql, (rs, i) -> {
+            List<DisciplineTableRowDto> rows = jdbc.query(sql, (rs, i) -> {
                 DisciplineTableRowDto dto = new DisciplineTableRowDto();
                 dto.setDisciplineName(rs.getString("discipline_name"));
                 dto.setGroupsCount(rs.getInt("groups_cnt"));
@@ -1048,8 +1138,195 @@ public class AnalyticsRepository {
                 dto.setExpectedCount(rs.getLong("expected"));
                 return dto;
             }, ln, dept(), ln, academicYear);
+            Map<String, long[]> moodleByDiscipline = fetchMoodleByDiscipline(academicYear, ln);
+            for (DisciplineTableRowDto dto : rows) {
+                long[] mm = moodleByDiscipline.get(dto.getDisciplineName());
+                if (mm != null) {
+                    dto.setMoodleLinksCount(mm[0]);
+                    dto.setUploadedCount(dto.getUploadedCount() + mm[0]);
+                }
+            }
+            return rows;
         } catch (Exception e) {
             return List.of();
+        }
+    }
+
+    /**
+     * Moodle в эквиваленте "загруженных работ": 1 Moodle-ссылка по (planRow, group, control, topic, year)
+     * считается как число студентов этой группы (т.е. покрывает всю группу для выбранного контроля/темы).
+     */
+    private long fetchMoodleUploadedTotal(String academicYear, String teacherLastNameOrNull) {
+        String teacherFilter = (teacherLastNameOrNull == null || teacherLastNameOrNull.isBlank())
+                ? ""
+                : " AND LOWER(TRIM(t.last_name)) = LOWER(TRIM(?))";
+        String sql = """
+                WITH tl AS (
+                  SELECT DISTINCT t.plan_row_id, NULLIF(ltrim(btrim(t.group_name), '0'), '') AS group_norm
+                  FROM public.teaching_load_csv t
+                  WHERE t.department_name ILIKE ?
+                """ + teacherFilter + """
+                ),
+                stud AS (
+                  SELECT NULLIF(ltrim(btrim(s.group_name), '0'), '') AS group_norm, COUNT(*)::bigint AS students_cnt
+                  FROM public.students s
+                  WHERE s.status IS DISTINCT FROM 'Отчислен'
+                  GROUP BY 1
+                ),
+                ml AS (
+                  SELECT m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '') AS group_norm,
+                    COUNT(*)::bigint AS links_cnt
+                  FROM public.moodle_links m
+                  WHERE btrim(COALESCE(m.academic_year, '')) = ?
+                  GROUP BY m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '')
+                )
+                SELECT COALESCE(SUM(COALESCE(stud.students_cnt, 0) * COALESCE(ml.links_cnt, 0)), 0)::bigint AS uploaded_moodle
+                FROM tl
+                LEFT JOIN stud ON stud.group_norm = tl.group_norm
+                LEFT JOIN ml ON ml.plan_row_id = tl.plan_row_id AND ml.group_norm = tl.group_norm
+                """;
+        try {
+            if (teacherFilter.isEmpty()) {
+                Long v = jdbc.queryForObject(sql, Long.class, dept(), academicYear);
+                return v == null ? 0L : v;
+            }
+            Long v = jdbc.queryForObject(sql, Long.class, dept(), teacherLastNameOrNull, academicYear);
+            return v == null ? 0L : v;
+        } catch (Exception ignored) {
+            return 0L;
+        }
+    }
+
+    private Map<String, Long> fetchMoodleUploadedByTeacher(String academicYear) {
+        String sql = """
+                WITH tl AS (
+                  SELECT DISTINCT LOWER(TRIM(t.last_name)) AS teacher_ln, t.plan_row_id,
+                    NULLIF(ltrim(btrim(t.group_name), '0'), '') AS group_norm
+                  FROM public.teaching_load_csv t
+                  WHERE t.department_name ILIKE ?
+                ),
+                stud AS (
+                  SELECT NULLIF(ltrim(btrim(s.group_name), '0'), '') AS group_norm, COUNT(*)::bigint AS students_cnt
+                  FROM public.students s
+                  WHERE s.status IS DISTINCT FROM 'Отчислен'
+                  GROUP BY 1
+                ),
+                ml AS (
+                  SELECT m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '') AS group_norm,
+                    COUNT(*)::bigint AS links_cnt
+                  FROM public.moodle_links m
+                  WHERE btrim(COALESCE(m.academic_year, '')) = ?
+                  GROUP BY m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '')
+                )
+                SELECT tl.teacher_ln,
+                  COALESCE(SUM(COALESCE(stud.students_cnt, 0) * COALESCE(ml.links_cnt, 0)), 0)::bigint AS uploaded_moodle
+                FROM tl
+                LEFT JOIN stud ON stud.group_norm = tl.group_norm
+                LEFT JOIN ml ON ml.plan_row_id = tl.plan_row_id AND ml.group_norm = tl.group_norm
+                GROUP BY tl.teacher_ln
+                """;
+        try {
+            return jdbc.query(sql, rs -> {
+                Map<String, Long> out = new HashMap<>();
+                while (rs.next()) out.put(rs.getString("teacher_ln"), rs.getLong("uploaded_moodle"));
+                return out;
+            }, dept(), academicYear);
+        } catch (Exception ignored) {
+            return Map.of();
+        }
+    }
+
+    private Map<String, long[]> fetchMoodleByDiscipline(String academicYear, String teacherLastNameOrNull) {
+        String teacherFilter = (teacherLastNameOrNull == null || teacherLastNameOrNull.isBlank())
+                ? ""
+                : " AND LOWER(TRIM(t.last_name)) = LOWER(TRIM(?))";
+        String sql = """
+                WITH tl AS (
+                  SELECT DISTINCT t.plan_row_id, t.discipline_name,
+                    NULLIF(ltrim(btrim(t.group_name), '0'), '') AS group_norm
+                  FROM public.teaching_load_csv t
+                  WHERE t.department_name ILIKE ?
+                """ + teacherFilter + """
+                    AND t.discipline_name IS NOT NULL AND BTRIM(t.discipline_name) <> ''
+                ),
+                stud AS (
+                  SELECT NULLIF(ltrim(btrim(s.group_name), '0'), '') AS group_norm, COUNT(*)::bigint AS students_cnt
+                  FROM public.students s
+                  WHERE s.status IS DISTINCT FROM 'Отчислен'
+                  GROUP BY 1
+                ),
+                ml AS (
+                  SELECT m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '') AS group_norm,
+                    COUNT(*)::bigint AS links_cnt
+                  FROM public.moodle_links m
+                  WHERE btrim(COALESCE(m.academic_year, '')) = ?
+                  GROUP BY m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '')
+                )
+                SELECT tl.discipline_name,
+                  COALESCE(SUM(COALESCE(stud.students_cnt, 0) * COALESCE(ml.links_cnt, 0)), 0)::bigint AS uploaded_moodle,
+                  COALESCE(SUM(COALESCE(ml.links_cnt, 0)), 0)::bigint AS links_cnt
+                FROM tl
+                LEFT JOIN stud ON stud.group_norm = tl.group_norm
+                LEFT JOIN ml ON ml.plan_row_id = tl.plan_row_id AND ml.group_norm = tl.group_norm
+                GROUP BY tl.discipline_name
+                """;
+        try {
+            if (teacherFilter.isEmpty()) {
+                return jdbc.query(sql, rs -> {
+                    Map<String, long[]> out = new HashMap<>();
+                    while (rs.next()) out.put(rs.getString("discipline_name"),
+                            new long[]{rs.getLong("uploaded_moodle"), rs.getLong("links_cnt")});
+                    return out;
+                }, dept(), academicYear);
+            }
+            return jdbc.query(sql, rs -> {
+                Map<String, long[]> out = new HashMap<>();
+                while (rs.next()) out.put(rs.getString("discipline_name"),
+                        new long[]{rs.getLong("uploaded_moodle"), rs.getLong("links_cnt")});
+                return out;
+            }, dept(), teacherLastNameOrNull, academicYear);
+        } catch (Exception ignored) {
+            return Map.of();
+        }
+    }
+
+    private Map<Integer, long[]> fetchMoodleByPlanRow(String academicYear) {
+        String sql = """
+                WITH tl AS (
+                  SELECT DISTINCT t.plan_row_id, NULLIF(ltrim(btrim(t.group_name), '0'), '') AS group_norm
+                  FROM public.teaching_load_csv t
+                  WHERE t.department_name ILIKE ?
+                ),
+                stud AS (
+                  SELECT NULLIF(ltrim(btrim(s.group_name), '0'), '') AS group_norm, COUNT(*)::bigint AS students_cnt
+                  FROM public.students s
+                  WHERE s.status IS DISTINCT FROM 'Отчислен'
+                  GROUP BY 1
+                ),
+                ml AS (
+                  SELECT m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '') AS group_norm,
+                    COUNT(*)::bigint AS links_cnt
+                  FROM public.moodle_links m
+                  WHERE btrim(COALESCE(m.academic_year, '')) = ?
+                  GROUP BY m.plan_row_id, NULLIF(ltrim(btrim(m.group_name), '0'), '')
+                )
+                SELECT tl.plan_row_id,
+                  COALESCE(SUM(COALESCE(stud.students_cnt, 0) * COALESCE(ml.links_cnt, 0)), 0)::bigint AS uploaded_moodle,
+                  COALESCE(SUM(COALESCE(ml.links_cnt, 0)), 0)::bigint AS links_cnt
+                FROM tl
+                LEFT JOIN stud ON stud.group_norm = tl.group_norm
+                LEFT JOIN ml ON ml.plan_row_id = tl.plan_row_id AND ml.group_norm = tl.group_norm
+                GROUP BY tl.plan_row_id
+                """;
+        try {
+            return jdbc.query(sql, rs -> {
+                Map<Integer, long[]> out = new HashMap<>();
+                while (rs.next()) out.put(rs.getInt("plan_row_id"),
+                        new long[]{rs.getLong("uploaded_moodle"), rs.getLong("links_cnt")});
+                return out;
+            }, dept(), academicYear);
+        } catch (Exception ignored) {
+            return Map.of();
         }
     }
 
