@@ -18,10 +18,6 @@ public class AdminStatsRepository {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Статистика для админ-страницы: преподаватели и дисциплины кафедры ИС,
-     * группы (опционально по учебному году), шаблоны. Один запрос вместо четырёх.
-     */
     public AdminStatsDto getStats(String academicYear) {
         String sql = """
             SELECT

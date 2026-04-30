@@ -40,7 +40,27 @@ public class TeacherProfileDto {
 
     @JsonProperty("roleDisplay")
     public String getRoleDisplay() {
-        return (role != null && "ADMIN".equalsIgnoreCase(role.trim())) ? "Администратор" : "Преподаватель";
+        if (role == null || role.isBlank()) return "Преподаватель";
+        boolean admin = false;
+        boolean head = false;
+        boolean teacher = false;
+        for (String token : role.split(",")) {
+            String normalized = token == null ? "" : token.trim().toUpperCase();
+            if ("ADMIN".equals(normalized)) admin = true;
+            else if ("HEAD_DEPARTMENT".equals(normalized) || "HEAD".equals(normalized)) head = true;
+            else if ("TEACHER".equals(normalized)) teacher = true;
+        }
+        StringBuilder out = new StringBuilder();
+        if (admin) out.append("Администратор");
+        if (head) {
+            if (!out.isEmpty()) out.append(", ");
+            out.append("Зав. кафедры");
+        }
+        if (teacher || out.isEmpty()) {
+            if (!out.isEmpty()) out.append(", ");
+            out.append("Преподаватель");
+        }
+        return out.toString();
     }
 
     @JsonProperty("position")

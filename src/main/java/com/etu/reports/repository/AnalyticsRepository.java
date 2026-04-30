@@ -32,7 +32,6 @@ public class AnalyticsRepository {
         return departmentFilter != null ? departmentFilter : DEPT;
     }
 
-    /** Статистика преподавателя: ожидается работ, загружено (отчёты с academic_year = заданному году) */
     public TeacherStatsDto getTeacherStats(String teacherLastName, String academicYear) {
         String ln = teacherLastName == null ? "" : teacherLastName.trim();
 
@@ -82,7 +81,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Детализация по группам — группа, дисциплина, вид контроля, всего, с проверкой, прошли, ср. % */
     public List<GroupDetailRowDto> getTeacherGroupDetails(String teacherLastName, LocalDate dateFrom, LocalDate dateTo) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -132,7 +130,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Статистика кафедры: преподавателей, ожидается работ всего, загружено (по academic_year отчёта) */
     public DepartmentAnalyticsDto getDepartmentAnalytics(String academicYear) {
 
         String sql = """
@@ -190,7 +187,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Статистика по преподавателям: ФИО, дисциплины, всего работ (ожидается), загружено, % по шаблону */
     public List<TeacherSummaryRowDto> getTeacherSummary(String academicYear) {
 
         String sql = """
@@ -263,7 +259,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Нагрузка по преподавателям (bar chart) */
     public List<TeacherWorkloadDto> getTeacherWorkload(LocalDate dateFrom, LocalDate dateTo) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -296,7 +291,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Статистика по дисциплинам кафедры — группы, студенты, X/Y, прогресс, ср. % (все преподаватели кафедры) */
     public List<DisciplineTableRowDto> getDepartmentDisciplineStats(String academicYear) {
 
         String sql = """
@@ -363,7 +357,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Кафедра: агрегат по курсу и семестру — ожидается / загружено */
     public List<SemesterStatsRowDto> getDepartmentSemesterStats(String academicYear) {
 
         String sql = """
@@ -432,7 +425,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Преподаватель: агрегат по курсу и семестру — ожидается / загружено */
     public List<SemesterStatsRowDto> getTeacherSemesterStats(String academicYear, String teacherLastName) {
         String ln = teacherLastName == null ? "" : teacherLastName.trim();
 
@@ -502,7 +494,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Статистика по дисциплинам кафедры с ФИО преподавателя и полной информацией о дисциплине (курс, семестр, уровень/форма образования, часы, виды контроля). */
     public List<DisciplineWithTeacherRowDto> getDepartmentDisciplineStatsWithTeachers(String academicYear) {
 
         String sql = """
@@ -603,8 +594,7 @@ public class AnalyticsRepository {
             return List.of();
         }
     }
-
-    /** Распределение по дисциплинам — всего, с проверкой, прошли, ср. % */
+  
     public List<DisciplineStatsDto> getDepartmentByDisciplines(LocalDate dateFrom, LocalDate dateTo) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -645,7 +635,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** По виду контроля — всего, с проверкой, прошли, ср. % */
     public List<ControlTypeStatsDto> getByControlType(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -701,7 +690,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Динамика по месяцам — загрузки и проверка */
     public List<MonthlyStatsDto> getMonthlyStats(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf(LocalDate.now().minusMonths(6));
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf(LocalDate.now());
@@ -772,7 +760,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Динамика загрузок: загружено (по upload_date) vs прогнано шаблоном (по checked_at) по месяцам */
     public List<UploadDynamicsDto> getUploadDynamics(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf(LocalDate.now().minusMonths(6));
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf(LocalDate.now());
@@ -835,7 +822,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Распределение соответствия по бакетам 90-100, 70-89, 50-69, <50 */
     public List<ComplianceBucketDto> getComplianceBuckets(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -889,7 +875,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** ТОП категорий ошибок из errors_json или warnings_json. useWarnings=true → warnings_json */
     public List<ErrorCategoryDto> getFrequentErrors(LocalDate dateFrom, LocalDate dateTo, String teacherLastName, boolean useWarnings) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -924,7 +909,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Статистика по группам: группа, дисциплина, студенты, загружено X/Y, ср. %, критич. ошибки, предупреждения */
     public List<GroupStatsRowDto> getGroupStatsRows(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -1002,7 +986,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Мои дисциплины: агрегат по дисциплине — группы, студенты, загружено X/Y, прогресс, ср. %, критич. ошибки, предупреждения */
     public List<DisciplineTableRowDto> getTeacherDisciplineStats(String academicYear, String teacherLastName) {
         String ln = teacherLastName == null ? "" : teacherLastName.trim();
 
@@ -1070,7 +1053,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Проблемные группы: низкий % и/или много невалидных. ТОП 10. */
     public List<ProblematicGroupDto> getProblematicGroups(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -1129,7 +1111,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Ошибки по дисциплинам и категориям (для heatmap) */
     public List<DisciplineErrorDto> getErrorsByDiscipline(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -1169,7 +1150,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Критерии, которые чаще всего не проходят (из criteria_json) */
     public List<FailingCriterionDto> getFailingCriteria(LocalDate dateFrom, LocalDate dateTo, String teacherLastName) {
         Date df = dateFrom != null ? Date.valueOf(dateFrom) : Date.valueOf("1900-01-01");
         Date dt = dateTo != null ? Date.valueOf(dateTo) : Date.valueOf("2100-12-31");
@@ -1218,7 +1198,6 @@ public class AnalyticsRepository {
         }
     }
 
-    /** Справочники для фильтров */
     public List<String> getDisciplines() {
         String sql = "SELECT DISTINCT t.discipline_name FROM public.teaching_load_csv t WHERE t.department_name ILIKE ? AND t.discipline_name IS NOT NULL AND TRIM(t.discipline_name) <> '' ORDER BY t.discipline_name";
         return jdbc.queryForList(sql, String.class, dept());

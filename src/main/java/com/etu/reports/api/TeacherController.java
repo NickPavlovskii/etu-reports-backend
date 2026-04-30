@@ -38,6 +38,30 @@ public class TeacherController {
         return v == null ? "" : v;
     }
 
+    private static String buildRoleDisplay(String roleRaw) {
+        if (roleRaw == null || roleRaw.isBlank()) return "Преподаватель";
+        boolean admin = false;
+        boolean head = false;
+        boolean teacher = false;
+        for (String token : roleRaw.split(",")) {
+            String r = token == null ? "" : token.trim().toUpperCase();
+            if ("ADMIN".equals(r)) admin = true;
+            else if ("HEAD_DEPARTMENT".equals(r) || "HEAD".equals(r)) head = true;
+            else if ("TEACHER".equals(r)) teacher = true;
+        }
+        StringBuilder out = new StringBuilder();
+        if (admin) out.append("Администратор");
+        if (head) {
+            if (!out.isEmpty()) out.append(", ");
+            out.append("Зав. кафедры");
+        }
+        if (teacher || out.isEmpty()) {
+            if (!out.isEmpty()) out.append(", ");
+            out.append("Преподаватель");
+        }
+        return out.toString();
+    }
+
     @GetMapping("/auth/login")
     public Map<String, Object> login(@RequestParam String lastName) {
         Teaching profile = repo.findTeacherProfileByLastName(lastName);
@@ -52,7 +76,7 @@ public class TeacherController {
 
         String role = teacherProfileRepo.getRole(lastName);
         if (role == null || role.isBlank()) role = "TEACHER";
-        String roleDisplay = "ADMIN".equalsIgnoreCase(role) ? "Администратор" : "Преподаватель";
+        String roleDisplay = buildRoleDisplay(role);
 
         // Дисциплины преподавателя берём из teaching_load_csv (как и остальные справочные поля).
         List<String> disciplines = repo.findDistinctDisciplinesByLastName(lastName);

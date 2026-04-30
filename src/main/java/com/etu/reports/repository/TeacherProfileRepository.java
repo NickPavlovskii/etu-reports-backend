@@ -7,8 +7,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public class TeacherProfileRepository {
@@ -192,9 +194,7 @@ public class TeacherProfileRepository {
      */
     public void upsertRoleAndEmail(String lastName, String email, String role) {
         String ln = lastName == null ? "" : lastName.trim();
-        String r = (role == null || role.isBlank()) ? "TEACHER" : role.trim().toUpperCase();
-        if ("ADMINISTRATOR".equals(r)) r = "ADMIN";
-        if (!"TEACHER".equals(r) && !"ADMIN".equals(r)) r = "TEACHER";
+        String r = normalizeRoles(role);
 
         try {
             int updated = runUpdateRole(ln, r);
@@ -282,5 +282,32 @@ public class TeacherProfileRepository {
         } catch (Exception e) {
             return "TEACHER"; // таблица может отсутствовать до миграции
         }
+    }
+
+    private static String normalizeRoles(String raw) {
+        if (raw == null || raw.isBlank()) return "TEACHER";
+        Set<String> roles = new LinkedHashSet<>();
+        for (String token : raw.split(",")) {
+            String t = token == null ? "" : token.trim();
+            if (t.isEmpty()) continue;
+            String u = t.toUpperCase();
+            if ("ADMINISTRATOR".equals(u)) u = "ADMIN";
+            if ("HEAD".equals(u) || "HEAD OF DEPARTMENT".equals(u)) u = "HEAD_DEPARTMENT";
+            if ("TEACHER".equals(u) || "ADMIN".equals(u) || "HEAD_DEPARTMENT".equals(u)) {
+                roles.add(u);
+            }
+        }
+        if (roles.isEmpty()) return "TEACHER";
+        StringBuilder out = new StringBuilder();
+        if (roles.contains("ADMIN")) out.append("ADMIN");
+        if (roles.contains("HEAD_DEPARTMENT")) {
+            if (!out.isEmpty()) out.append(",");
+            out.append("HEAD_DEPARTMENT");
+        }
+        if (roles.contains("TEACHER")) {
+            if (!out.isEmpty()) out.append(",");
+            out.append("TEACHER");
+        }
+        return out.toString();
     }
 }

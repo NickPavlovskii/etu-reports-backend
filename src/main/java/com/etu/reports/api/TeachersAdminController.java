@@ -8,7 +8,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * API для администрирования преподавателей: список, редактирование роли и email.
@@ -71,34 +73,55 @@ public class TeachersAdminController {
                 });
     }
 
-    /** Из запроса (role или roles) определяем одну сохраняемую роль: ADMIN если есть админ, иначе TEACHER. */
     private static String resolveRole(UpdateTeacherRoleRequest request) {
         if (request == null) return "TEACHER";
-        if (request.getRoles() != null && !request.getRoles().isEmpty()) {
-            boolean hasAdmin = request.getRoles().stream()
-                    .filter(r -> r != null && !r.isBlank())
-                    .anyMatch(r -> {
-                        String u = r.trim().toUpperCase();
-                        return "ADMIN".equals(u) || "ADMINISTRATOR".equals(u)
-                                || r.trim().toLowerCase().contains("админ");
-                    });
-            return hasAdmin ? "ADMIN" : "TEACHER";
+
+        Set<String> parsed = new LinkedHashSet<>();
+        if (request.getRoles() != null) {
+            request.getRoles().stream()
+                    .map(TeachersAdminController::normalizeRoleToken)
+                    .filter(r -> !r.isBlank())
+                    .forEach(parsed::add);
         }
         if (request.getRole() != null && !request.getRole().isBlank()) {
-            String r = request.getRole().trim().toUpperCase();
-            if ("ADMINISTRATOR".equals(r)) return "ADMIN";
-            if ("ADMIN".equals(r)) return "ADMIN";
+            for (String token : request.getRole().split(",")) {
+                String normalized = normalizeRoleToken(token);
+                if (!normalized.isBlank()) parsed.add(normalized);
+            }
+        }
+        if (parsed.isEmpty()) {
             return "TEACHER";
         }
-        return "TEACHER";
+
+        List<String> ordered = List.of("ADMIN", "HEAD_DEPARTMENT", "TEACHER");
+        StringBuilder out = new StringBuilder();
+        for (String role : ordered) {
+            if (parsed.contains(role)) {
+                if (!out.isEmpty()) out.append(",");
+                out.append(role);
+            }
+        }
+        return out.isEmpty() ? "TEACHER" : out.toString();
+    }
+
+    private static String normalizeRoleToken(String raw) {
+        if (raw == null) return "";
+        String v = raw.trim();
+        if (v.isEmpty()) return "";
+        String u = v.toUpperCase();
+        String l = v.toLowerCase();
+        if ("ADMINISTRATOR".equals(u) || "ADMIN".equals(u) || l.contains("админ")) return "ADMIN";
+        if ("HEAD_DEPARTMENT".equals(u) || "HEAD".equals(u) || "HEAD OF DEPARTMENT".equals(u) || l.contains("зав") || l.contains("кафедр")) {
+            return "HEAD_DEPARTMENT";
+        }
+        if ("TEACHER".equals(u) || l.contains("преподав")) return "TEACHER";
+        return "";
     }
 
     public static class UpdateTeacherRoleRequest {
         private String email;
         private String role;
-        /** Список ролей с фронта (Преподаватель + Администратор): если есть админ — сохраняем ADMIN. */
         private List<String> roles;
-
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         public String getRole() { return role; }
