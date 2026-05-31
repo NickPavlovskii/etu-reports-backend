@@ -9,6 +9,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.etu.reports.exception.ReportNotFoundException;
@@ -75,6 +76,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                 "error", "Not Found",
                 "message", e.getResourcePath()
+        ));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException e) {
+        HttpStatus status = HttpStatus.resolve(e.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        String message = e.getReason() != null ? e.getReason() : status.getReasonPhrase();
+        if (status.is5xxServerError()) {
+            log.error("ResponseStatusException ({}): {}", status.value(), message, e);
+        } else {
+            log.warn("ResponseStatusException ({}): {}", status.value(), message);
+        }
+        return ResponseEntity.status(status).body(Map.of(
+                "error", status.getReasonPhrase(),
+                "message", message
         ));
     }
 

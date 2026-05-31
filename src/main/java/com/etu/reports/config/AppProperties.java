@@ -9,11 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "app")
 public class AppProperties {
-
-    /** Кафедра для фильтрации (например, "каф.ИС"). */
     private String departmentFilter = "каф.ИС";
-
-    /** Директория хранения файлов отчётов. */
     private String reportsStorageDir = "reports_storage";
 
     public String getDepartmentFilter() {

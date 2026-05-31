@@ -1,5 +1,6 @@
 package com.etu.reports.api;
 
+import com.etu.reports.dto.template.KeywordSearchResultDto;
 import com.etu.reports.dto.template.TemplateCriteriaDto;
 import com.etu.reports.dto.template.VerificationTemplateDto;
 import com.etu.reports.exception.TemplateNotFoundException;
@@ -17,9 +18,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * API шаблонов проверки (verification_templates).
- */
+
 @RestController
 @RequestMapping("/api/templates")
 @Tag(name = "Templates", description = "Шаблоны проверки документов")
@@ -104,6 +103,30 @@ public class TemplateController {
         auditLogRepo.log("TEMPLATE_DELETED", "template", String.valueOf(id), null, template.getName());
     }
 
+    @Operation(summary = "Поиск ключевых слов в образце DOCX/DOC/PDF",
+            description = "Извлекает текст из файла и возвращает строки с совпадениями для выбора обязательных фраз шаблона.")
+    @PostMapping("/keyword-search")
+    public KeywordSearchResultDto keywordSearch(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("query") String query,
+            @RequestParam(value = "maxMatches", required = false, defaultValue = "30") int maxMatches
+    ) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Файл не загружен");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null || filename.isBlank()) {
+            filename = "sample.docx";
+        }
+        try {
+            return titlePageTemplateService.searchKeywords(filename, file.getBytes(), query, maxMatches);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Ошибка чтения файла: " + e.getMessage());
+        }
+    }
+
     @Operation(summary = "Загрузить макет титульного листа и извлечь обязательные элементы",
             description = "Принимает файл-шаблон (DOC, DOCX, PDF). Извлекает структуру первой страницы и сохраняет как titlePageRequiredStrings для проверки.")
     @PostMapping("/{id}/title-page-template")
@@ -127,7 +150,7 @@ public class TemplateController {
         if (extracted.isEmpty()) {
             throw new IllegalArgumentException("Не удалось извлечь элементы из шаблона. Проверьте формат файла.");
         }
-        TemplateCriteriaDto updatedCriteria = titlePageTemplateService.mergeWithExtractedStrings(
+        TemplateCriteriaDto updatedCriteria = TemplateCriteriaDto.mergeWithTitlePageStrings(
                 template.getCriteria(), extracted);
         VerificationTemplateDto updated = templateRepo.update(id, template.getName(), template.getDescription(), updatedCriteria)
                 .orElseThrow(() -> new TemplateNotFoundException(id));
@@ -149,9 +172,7 @@ public class TemplateController {
         public void setCriteria(TemplateCriteriaDto criteria) { this.criteria = criteria; }
     }
 
-    /**
-     * Частичный JSON criteria с фронта даёт null в непереданных полях — без слияния в БД затираются старые значения.
-     */
+
     private static TemplateCriteriaDto mergeTemplateCriteria(TemplateCriteriaDto base, TemplateCriteriaDto patch) {
         if (base == null) {
             return Objects.requireNonNullElseGet(patch, () -> TemplateCriteriaDto.builder().build());

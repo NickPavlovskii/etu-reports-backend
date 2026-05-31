@@ -78,7 +78,6 @@ public class TeacherController {
         if (role == null || role.isBlank()) role = "TEACHER";
         String roleDisplay = buildRoleDisplay(role);
 
-        // Дисциплины преподавателя берём из teaching_load_csv (как и остальные справочные поля).
         List<String> disciplines = repo.findDistinctDisciplinesByLastName(lastName);
 
         Map<String, Object> result = Map.ofEntries(

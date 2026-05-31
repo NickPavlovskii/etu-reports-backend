@@ -116,10 +116,6 @@ public class ValidationController {
         return validationService.validateBatch(files, criteria, annotate, templateId, academicYear, workType, controlType, topic);
     }
 
-    /**
-     * Spring привязывает {@code List<MultipartFile>} к повторяющимся частям с именем {@code files}.
-     * Если список пуст или отсутствует, пробуем {@code files[]}, {@code file} — как у части клиентов.
-     */
     private static List<MultipartFile> resolveBatchMultipartFiles(List<MultipartFile> boundFiles, HttpServletRequest request) {
         List<MultipartFile> fromBinding = boundFiles != null ? new ArrayList<>(boundFiles) : new ArrayList<>();
         if (!fromBinding.isEmpty()) {

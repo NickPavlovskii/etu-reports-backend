@@ -6,9 +6,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * API студента: получение по id с ФИО из справочника student_fio.
- */
 @RestController
 @RequestMapping("/api/students")
 @Tag(name = "Students", description = "Студент по id (ФИО из справочника)")

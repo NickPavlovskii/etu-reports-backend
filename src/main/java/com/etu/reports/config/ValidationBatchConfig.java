@@ -3,13 +3,8 @@ package com.etu.reports.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-
 import java.util.concurrent.Executor;
 
-/**
- * Пул потоков для параллельной проверки файлов в {@code /api/validate/batch}.
- * Ограничивает число одновременных тяжёлых задач (POI/PDFBox).
- */
 @Configuration
 public class ValidationBatchConfig {
 

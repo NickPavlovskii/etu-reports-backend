@@ -2,7 +2,6 @@ package com.etu.reports.dto.teacher;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/** Строка «Статистика по преподавателям»: ФИО, кол-во дисциплин, ожидается работ, загружено */
 public class TeacherSummaryRowDto {
     private String teacherFio;
     private String teacherLastName;

@@ -6,9 +6,6 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
-/**
- * Студенты: получение по id с ФИО из справочника student_fio.
- */
 @Repository
 public class StudentRepository {
 
@@ -18,9 +15,6 @@ public class StudentRepository {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Найти студента по id (lk_id). ФИО берётся из справочника student_fio, если есть запись.
-     */
     public Optional<StudentDto> findById(int id) {
         String sql = "SELECT s.lk_id AS id, s.group_name, s.record_book, " +
                 "  sf.last_name, sf.first_name, sf.patronymic " +
@@ -49,9 +43,6 @@ public class StudentRepository {
         }, id).stream().findFirst();
     }
 
-    /**
-     * Добавить или обновить ФИО в справочнике student_fio по id студента (lk_id).
-     */
     public void upsertFio(int id, String lastName, String firstName, String patronymic) {
         String sql = "INSERT INTO public.student_fio (id, last_name, first_name, patronymic, updated_at) " +
                 "VALUES (?, NULLIF(TRIM(?), ''), NULLIF(TRIM(?), ''), NULLIF(TRIM(?), ''), CURRENT_TIMESTAMP) " +
@@ -63,9 +54,6 @@ public class StudentRepository {
         jdbc.update(sql, id, lastName, firstName, patronymic, lastName, firstName, patronymic);
     }
 
-    /**
-     * Найти lk_id студента по номеру зачётки (record_book). Берётся запись с максимальным academic_year.
-     */
     public Optional<Integer> findIdByRecordBook(String recordBook) {
         if (recordBook == null || recordBook.isBlank()) return Optional.empty();
         String sql = "SELECT s.lk_id FROM public.students s " +

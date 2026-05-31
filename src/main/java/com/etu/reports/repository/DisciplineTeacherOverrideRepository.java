@@ -9,9 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Фактический преподаватель по строке рабочей программы ({@code plan_row_id}), отдельно от {@code teaching_load_csv}.
- */
 @Repository
 public class DisciplineTeacherOverrideRepository {
 

@@ -87,7 +87,6 @@ public class AuditLogRepository {
         }
     }
 
-    /** Добавить колонки отката, если их нет (эквивалент миграции V6). */
     private void ensureRollbackColumns() {
         try {
             jdbc.execute("ALTER TABLE public.audit_log ADD COLUMN IF NOT EXISTS rolled_back_at TIMESTAMPTZ");
@@ -98,7 +97,7 @@ public class AuditLogRepository {
         }
     }
 
-    /** Пометить запись журнала как отменённую (откат самого действия в журнале). При отсутствии колонок V6 создаёт их. */
+
     public void markRolledBack(long auditLogId, String rolledBackBy) {
         String who = rolledBackBy != null ? rolledBackBy : "admin";
         try {
@@ -120,9 +119,6 @@ public class AuditLogRepository {
         }
     }
 
-    /**
-     * Журнал событий с фильтрами по периоду, действию и актору.
-     */
     public List<AuditLogEntryDto> find(LocalDate dateFrom, LocalDate dateTo, String action, String actor) {
         List<Object> args = new ArrayList<>();
         if (dateFrom != null) {

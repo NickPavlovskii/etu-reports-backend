@@ -40,10 +40,6 @@ public class TeacherProfileRepository {
         return dto;
     };
 
-    /**
-     * Список всех преподавателей кафедры с email, ролью, количеством дисциплин.
-     * Опциональный поиск по имени или email.
-     */
     public List<TeacherProfileDto> findAll(String search) {
         String s = search == null ? "" : search.trim();
         try {
@@ -77,7 +73,6 @@ public class TeacherProfileRepository {
                 ORDER BY ta.last_name, ta.first_name
                 """;
             List<TeacherProfileDto> result = jdbc.query(sql, MAPPER, DEPT, s, s, s, s, s);
-            // Печатаем результат запроса в консоль/логи, чтобы увидеть что именно возвращает findAll.
             log.info("TeacherProfileRepository.findAll(search='{}') -> {} rows", s, result.size());
             if (!result.isEmpty()) {
                 TeacherProfileDto first = result.get(0);
@@ -186,12 +181,6 @@ public class TeacherProfileRepository {
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
-    /**
-     * Обновить роль и/или email преподавателя. Создаёт запись, если её нет.
-     * Поддерживаются две схемы таблицы:
-     * - с last_name PK и колонкой email (миграция V3);
-     * - с id PK, last_name, first_name, role, created_at, updated_at (и опционально email после V3_alter).
-     */
     public void upsertRoleAndEmail(String lastName, String email, String role) {
         String ln = lastName == null ? "" : lastName.trim();
         String r = normalizeRoles(role);
@@ -280,7 +269,7 @@ public class TeacherProfileRepository {
             List<String> list = jdbc.query(sql, (rs, i) -> rs.getString("role"), lastName == null ? "" : lastName.trim());
             return list.isEmpty() ? "TEACHER" : list.get(0);
         } catch (Exception e) {
-            return "TEACHER"; // таблица может отсутствовать до миграции
+            return "TEACHER";
         }
     }
 

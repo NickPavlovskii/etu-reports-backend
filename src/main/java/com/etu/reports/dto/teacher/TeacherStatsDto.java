@@ -13,8 +13,6 @@ public class TeacherStatsDto {
     @JsonProperty("totalWorks")
     public long getTotalWorks() { return totalWorks; }
     public void setTotalWorks(long totalWorks) { this.totalWorks = totalWorks; }
-
-    /** Дублирует totalWorks — фронт подставляет uploadedCount при отсутствии totalWorks */
     @JsonProperty("uploadedCount")
     public long getUploadedCount() { return totalWorks; }
 

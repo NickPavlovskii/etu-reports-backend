@@ -9,9 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Сборка {@link ValidationResultDto} из списка критериев; опционально — взвешенный процент.
- */
 @Component
 public class ValidationResultAssembler {
 
@@ -47,7 +44,6 @@ public class ValidationResultAssembler {
         return m;
     }
 
-    /** Как в {@link com.etu.reports.service.validation.internal.DocumentValidationDelegate#buildResult}: равные веса по числу критериев. */
     public ValidationResultDto assembleEqual(List<CriteriaResultDto> results) {
         List<CriteriaResultDto> errors = results.stream()
                 .filter(r -> !r.isPassed() && "error".equals(r.getLevel()))
@@ -68,7 +64,6 @@ public class ValidationResultAssembler {
                 .build();
     }
 
-    /** Процент по весам критериев (код из {@link CriteriaResultDto#getCode()}). */
     public ValidationResultDto assembleWeighted(List<CriteriaResultDto> results) {
         List<CriteriaResultDto> errors = results.stream()
                 .filter(r -> !r.isPassed() && "error".equals(r.getLevel()))

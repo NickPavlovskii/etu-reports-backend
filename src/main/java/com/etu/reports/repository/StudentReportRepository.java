@@ -45,7 +45,6 @@ public class StudentReportRepository {
         return jdbc.query(sql, REPORT_ROW_MAPPER, planRowId, teacherLastName);
     }
 
-    /** Следующий номер версии для данной комбинации полей (MAX(version)+1). */
     public int getNextVersion(int planRowId, int studentId, String groupName,
                               String teacherLastName, String topic, String controlType,
                               String workType, String academicYear) {
@@ -67,7 +66,6 @@ public class StudentReportRepository {
         return v == null ? 1 : v;
     }
 
-    /** Возвращает путь к файлу по id отчёта. */
     public Optional<String> findFilePathById(int reportId) {
         List<String> paths = jdbc.query(
                 "SELECT file_path FROM public.student_reports WHERE id = ?",
@@ -76,7 +74,6 @@ public class StudentReportRepository {
         return paths.isEmpty() ? Optional.empty() : Optional.ofNullable(paths.get(0));
     }
 
-    /** Возвращает имя файла и путь к нему по id отчёта. */
     public Optional<FileRef> findFileRefById(int reportId) {
         List<FileRef> list = jdbc.query(
                 "SELECT file_name, file_path FROM public.student_reports WHERE id = ?",
@@ -89,12 +86,6 @@ public class StudentReportRepository {
     // Запись
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Вставляет запись отчёта в БД и возвращает созданный объект.
-     *
-     * <p>Параметры {@code topic} и {@code controlType} сохраняются через
-     * {@code NULLIF(?, '')} — пустая строка → NULL.
-     */
     public ReportDto insert(int planRowId, int studentId, String groupName,
                             String teacherLastName, String topic, String controlType,
                             String workType, String workTitle, String academicYear,
@@ -127,7 +118,6 @@ public class StudentReportRepository {
     // Удаление
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Удаляет результаты валидации для отчёта (каскадная зависимость). */
     public void deleteValidationResultsByReportId(int reportId) {
         jdbc.update("DELETE FROM public.validation_results WHERE report_id = ?", reportId);
     }
@@ -145,12 +135,6 @@ public class StudentReportRepository {
     // Архив (последние версии)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Архив конкретного преподавателя — только последние версии каждой работы.
-     *
-     * <p>Окно {@code ROW_NUMBER()} партиционируется по составному ключу
-     * (plan_row_id, student_id, group, teacher, topic, control_type, academic_year).
-     */
     public List<ArchiveReportDto> findArchiveLatestByTeacher(String teacherLastName) {
         String sql = """
                 WITH ranked AS (
@@ -204,14 +188,6 @@ public class StudentReportRepository {
         return jdbc.query(sql, ARCHIVE_ROW_MAPPER, teacherLastName);
     }
 
-    /**
-     * Архив всей кафедры — только последние версии каждой работы.
-     *
-     * <p>Параметр {@code teacherLastNameFilter}: если пустой/null — возвращаются
-     * все отчёты; иначе фильтр применяется через единственный JDBC-параметр
-     * (фильтрация переносится в Java, SQL переключается между двумя вариантами
-     * WHERE-условия, что устраняет дублирование одного аргумента трижды).
-     */
     public List<ArchiveReportDto> findArchiveLatestAll(String teacherLastNameFilter) {
         boolean hasFilter = teacherLastNameFilter != null && !teacherLastNameFilter.isBlank();
 
@@ -278,7 +254,6 @@ public class StudentReportRepository {
     // Вспомогательный тип и маперы
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Пара «имя файла + путь на диске», возвращаемая для скачивания. */
     public record FileRef(String fileName, String filePath) {}
 
     private static final RowMapper<ReportDto> REPORT_ROW_MAPPER = (rs, rowNum) -> {

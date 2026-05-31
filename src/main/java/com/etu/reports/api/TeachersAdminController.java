@@ -52,7 +52,6 @@ public class TeachersAdminController {
             @Parameter(description = "Кто изменил (фамилия администратора), для журнала")
             @RequestParam(value = "actor", required = false) String actor
     ) {
-        // Поддержка одной роли (role) или списка (roles): если есть «Администратор» — сохраняем ADMIN, иначе TEACHER
         String role = resolveRole(request);
         String email = request != null ? request.getEmail() : null;
         try {

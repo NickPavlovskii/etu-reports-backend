@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 /** Точка данных для графика (месяц + значения) */
 public class ChartDataPointDto {
-    private String month; // ISO date or month label
+    private String month;
     private long received;
     private long accepted;
     private long totalUploaded;

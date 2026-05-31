@@ -280,6 +280,15 @@ public class TemplateCriteriaDto {
         this.titlePageRequiredStrings = titlePageRequiredStrings;
     }
 
+    /** Объединяет текущие критерии с фразами, извлечёнными из образца титульного листа. */
+    public static TemplateCriteriaDto mergeWithTitlePageStrings(TemplateCriteriaDto current, List<String> extracted) {
+        TemplateCriteriaDto base = current != null ? current : builder().build();
+        return base.toBuilder()
+                .hasTitlePage(true)
+                .titlePageRequiredStrings(extracted)
+                .build();
+    }
+
     public static final class Builder {
         private String name;
         private String description;

@@ -21,21 +21,6 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Сервис работы со студенческими отчётами.
- *
- * <p>Инкапсулирует всю бизнес-логику:
- * <ul>
- *   <li>Санитизация входных данных</li>
- *   <li>Вычисление версии файла</li>
- *   <li>Формирование имени файла и запись на диск</li>
- *   <li>Запись/удаление записей в БД через {@link StudentReportRepository}</li>
- *   <li>Аудит-логирование через {@link AuditLogRepository}</li>
- * </ul>
- *
- * <p>Контроллеры общаются только с этим сервисом; репозиторий используется
- * исключительно для SQL-операций.
- */
 @Service
 public class StudentReportService {
 
@@ -57,14 +42,6 @@ public class StudentReportService {
     // Загрузка отчёта
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Сохраняет работу студента: санитизирует параметры, вычисляет версию,
-     * записывает файл на диск, создаёт запись в БД и логирует событие.
-     *
-     * @return созданный объект {@link ReportDto}
-     * @throws IllegalArgumentException если groupName пустое или равно "undefined"
-     * @throws RuntimeException         при ошибке файловой системы
-     */
     @Transactional
     public ReportDto uploadReport(
             int planRowId,
@@ -97,12 +74,10 @@ public class StudentReportService {
         String safeUploadedBy = uploadedBy == null ? "" : uploadedBy.trim();
         String safeTeacher = teacherLastName == null ? "" : teacherLastName.trim();
 
-        // Вычисляем следующую версию
         int version = reportRepo.getNextVersion(
                 planRowId, studentId, safeGroup, safeTeacher,
                 safeTopic, safeControlType, safeWorkType, safeAcademicYear);
 
-        // Создаём директорию хранилища
         Path storageDirPath = Paths.get(storageDir);
         try {
             Files.createDirectories(storageDirPath);
@@ -110,14 +85,12 @@ public class StudentReportService {
             throw new RuntimeException("Cannot create storage dir: " + storageDirPath, e);
         }
 
-        // Формируем имя файла: <planRowId>__<group>__<studentId>__<date>__v<version>__<original>
         String originalName = (file.getOriginalFilename() == null || file.getOriginalFilename().isBlank())
                 ? "file" : file.getOriginalFilename();
         String safeOriginal = originalName.replaceAll("[\\\\/:*?\"<>|]", "_");
         String storedFileName = planRowId + "__" + safeGroup + "__" + studentId
                 + "__" + LocalDate.now() + "__v" + version + "__" + safeOriginal;
 
-        // Записываем файл на диск
         Path target = storageDirPath.resolve(storedFileName).normalize();
         try {
             Files.write(target, file.getBytes());
@@ -126,14 +99,12 @@ public class StudentReportService {
         }
         log.info("Report saved: {}", target.toAbsolutePath());
 
-        // Вставляем запись в БД
         ReportDto saved = reportRepo.insert(
                 planRowId, studentId, safeGroup, safeTeacher,
                 safeTopic, safeControlType, safeWorkType, safeWorkTitle, safeAcademicYear,
                 version, checkPercent, safeStatus, safeUploadedBy,
                 originalName, target.toString());
 
-        // Аудит
         String actor = safeUploadedBy.isBlank() ? safeTeacher : safeUploadedBy;
         auditLogRepo.log("REPORT_UPLOADED", "report", String.valueOf(saved.id()),
                 actor, "file: " + originalName);
@@ -145,11 +116,6 @@ public class StudentReportService {
     // Удаление отчёта
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Откатывает загрузку: удаляет результаты валидации, запись в БД и файл с диска.
-     *
-     * @return {@code true} если запись была найдена и удалена
-     */
     @Transactional
     public boolean deleteReport(int reportId) {
         try {
@@ -175,11 +141,6 @@ public class StudentReportService {
     // Скачивание файла
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Читает файл с диска по пути из БД и возвращает {@link ReportFile}.
-     *
-     * @throws ReportNotFoundException если запись или файл не найдены
-     */
     public ReportFile getReportFile(int reportId) {
         StudentReportRepository.FileRef ref = reportRepo.findFileRefById(reportId)
                 .orElseThrow(() -> new ReportNotFoundException("Report not found: " + reportId));
@@ -209,17 +170,14 @@ public class StudentReportService {
     // Делегирующие методы запросов
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Список работ преподавателя по конкретной дисциплине. */
     public List<ReportDto> findReportsByTeacherAndDiscipline(String teacherLastName, int planRowId) {
         return reportRepo.findByTeacherAndDiscipline(teacherLastName, planRowId);
     }
 
-    /** Архив — только последние версии по конкретному преподавателю. */
     public List<ArchiveReportDto> findArchiveByTeacher(String teacherLastName) {
         return reportRepo.findArchiveLatestByTeacher(teacherLastName);
     }
 
-    /** Архив — только последние версии по всей кафедре (опциональный фильтр по фамилии). */
     public List<ArchiveReportDto> findArchiveAll(String teacherLastNameFilter) {
         return reportRepo.findArchiveLatestAll(teacherLastNameFilter);
     }
@@ -228,12 +186,6 @@ public class StudentReportService {
     // Утилита: Content-Disposition
     // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Формирует заголовок {@code Content-Disposition} с поддержкой кириллицы (RFC 5987).
-     *
-     * <p>Если имя файла содержит символы вне ASCII, добавляется параметр
-     * {@code filename*=UTF-8''...} с percent-encoding.
-     */
     public static String buildContentDisposition(String fileName) {
         if (fileName == null) fileName = "download";
         boolean needsRfc5987 = fileName.chars().anyMatch(c -> c > 127);

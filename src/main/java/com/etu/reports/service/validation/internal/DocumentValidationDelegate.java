@@ -3,6 +3,8 @@ package com.etu.reports.service.validation.internal;
 import com.etu.reports.dto.template.TemplateCriteriaDto;
 import com.etu.reports.dto.validation.CriteriaResultDto;
 import com.etu.reports.dto.validation.ValidationResultDto;
+import com.etu.reports.service.TitlePageTemplateService;
+import com.etu.reports.service.validation.annotation.DocxCommentAnnotator;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.font.PDFont;
@@ -58,6 +60,15 @@ public class DocumentValidationDelegate {
     /** Допустимое отклонение размера шрифта от шаблона, пт (меньше — считаем тем же кеглем). */
     private static final double FONT_SIZE_TOLERANCE_PT = 2.0;
 
+    private final TitlePageTemplateService titlePageTemplateService;
+    private final DocxCommentAnnotator docxCommentAnnotator;
+
+    public DocumentValidationDelegate(TitlePageTemplateService titlePageTemplateService,
+                                    DocxCommentAnnotator docxCommentAnnotator) {
+        this.titlePageTemplateService = titlePageTemplateService;
+        this.docxCommentAnnotator = docxCommentAnnotator;
+    }
+
     /**
      * Валидирует документ по критериям шаблона.
      *
@@ -109,6 +120,11 @@ public class DocumentValidationDelegate {
         results.add(checkMinPages(pageCount, parseInt(template.getMinPages(), 5)));
         int sourcesCount = countSourcesDocx(doc);
         results.add(checkMinSources(sourcesCount, parseInt(template.getMinSources(), 5)));
+        if (shouldCheckTitlePage(template)) {
+            results.add(checkTitlePageByRequiredStrings(
+                    titlePageTemplateService.extractFirstPageTextFromDocx(doc),
+                    template.getTitlePageRequiredStrings()));
+        }
         results.addAll(checkStructureDocx(doc, template, runsToHighlight));
         return results;
     }
@@ -126,6 +142,10 @@ public class DocumentValidationDelegate {
                 for (XWPFRun r : runsToHighlight) {
                     try { r.setColor(HIGHLIGHT_COLOR); } catch (Exception ignored) {}
                 }
+                List<CriteriaResultDto> failed = results.stream()
+                        .filter(r -> !r.isPassed())
+                        .collect(Collectors.toList());
+                docxCommentAnnotator.annotate(doc, failed, runsToHighlight);
                 byte[] annotated = writeDocx(doc);
                 String base64 = Base64.getEncoder().encodeToString(annotated);
                 String outName = filename.replaceFirst("(\\.docx?)$", "_замечания$1");
@@ -159,6 +179,14 @@ public class DocumentValidationDelegate {
         results.add(checkMinPages(pageCount, parseInt(template.getMinPages(), 5)));
         int sourcesCount = countSourcesPdf(doc);
         results.add(checkMinSources(sourcesCount, parseInt(template.getMinSources(), 5)));
+        if (shouldCheckTitlePage(template)) {
+            PDFTextStripper firstPageStripper = new PDFTextStripper();
+            firstPageStripper.setStartPage(1);
+            firstPageStripper.setEndPage(1);
+            results.add(checkTitlePageByRequiredStrings(
+                    firstPageStripper.getText(doc),
+                    template.getTitlePageRequiredStrings()));
+        }
         results.addAll(checkStructurePdf(doc, template));
         return results;
     }
@@ -1985,6 +2013,17 @@ public class DocumentValidationDelegate {
             if (i >= 0 && (pos < 0 || i > pos)) pos = i;
         }
         return pos;
+    }
+
+    private static boolean shouldCheckTitlePage(TemplateCriteriaDto template) {
+        if (template == null) {
+            return false;
+        }
+        if (Boolean.TRUE.equals(template.getHasTitlePage())) {
+            return true;
+        }
+        List<String> strings = template.getTitlePageRequiredStrings();
+        return strings != null && strings.stream().anyMatch(s -> s != null && !s.isBlank());
     }
 
     public ValidationResultDto buildResult(List<CriteriaResultDto> results) {

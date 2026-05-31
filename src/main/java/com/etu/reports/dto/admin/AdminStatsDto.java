@@ -2,10 +2,6 @@ package com.etu.reports.dto.admin;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-/**
- * Общая статистика для страницы администрирования.
- * Поддерживаются оба набора имён полей для совместимости с фронтом.
- */
 public class AdminStatsDto {
 
     @JsonProperty("teachersCount")

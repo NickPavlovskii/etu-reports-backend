@@ -10,11 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Запуск набора проверок над уже открытым документом.
- * Сейчас делегирует в {@link DocumentValidationDelegate#collectDocxValidation} / {@link #collectPdfValidation};
- * отдельные {@link com.etu.reports.service.validation.rules} можно подключать сюда по цепочке.
- */
 @Service
 public class ValidationRuleEngine {
 

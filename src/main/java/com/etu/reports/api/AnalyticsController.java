@@ -17,13 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Аналитика загрузок: «сколько загружено из скольких ожидается» (X из Y).
- * Отчёты фильтруются по {@code student_reports.academic_year}.
- * <p>
- * Параметр {@code academicYear} (2024-2025) предпочтителен. Для совместимости со старым фронтом
- * можно передать только {@code dateFrom} — год будет выведен по правилу сентябрь–август.
- */
+
 @RestController
 @RequestMapping("/api")
 @Tag(name = "Analytics", description = "Загрузки отчётов: ожидается / загружено")
@@ -35,7 +29,6 @@ public class AnalyticsController {
         this.analyticsService = analyticsService;
     }
 
-    /** Приоритет: явный academicYear; иначе вывод из dateFrom (как в старых запросах с диапазоном дат). */
     private static String resolveAcademicYear(String academicYear, LocalDate dateFrom) {
         if (academicYear != null && !academicYear.isBlank()) {
             return AcademicYearValidator.requireValid(academicYear);

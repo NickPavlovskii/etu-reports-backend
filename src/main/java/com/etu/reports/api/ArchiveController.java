@@ -18,19 +18,11 @@ public class ArchiveController {
         this.archiveService = archiveService;
     }
 
-    /**
-     * Преподаватель: только свои отчёты, только последние версии.
-     */
     @GetMapping("/teachers/{lastName}/archive/reports")
     public List<ArchiveReportDto> teacherArchive(@PathVariable String lastName) {
         return archiveService.findArchiveByTeacher(lastName);
     }
 
-    /**
-     * Админ/завед/зам: все отчёты кафедры, только последние версии.
-     *
-     * @param teacherLastName необязательный фильтр по фамилии преподавателя
-     */
     @GetMapping("/archive/reports")
     public List<ArchiveReportDto> archiveAll(
             @RequestParam(value = "teacherLastName", required = false) String teacherLastName
